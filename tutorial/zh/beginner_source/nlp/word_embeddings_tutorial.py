@@ -1,78 +1,60 @@
 # -*- coding: utf-8 -*-
 r"""
-Word Embeddings: Encoding Lexical Semantics
+词嵌入 : 编码词汇语义
 ===========================================
 
-Word embeddings are dense vectors of real numbers, one per word in your
-vocabulary. In NLP, it is almost always the case that your features are
-words! But how should you represent a word in a computer? You could
-store its ascii character representation, but that only tells you what
-the word *is*, it doesn't say much about what it *means* (you might be
-able to derive its part of speech from its affixes, or properties from
-its capitalization, but not much). Even more, in what sense could you
-combine these representations? We often want dense outputs from our
-neural networks, where the inputs are :math:`|V|` dimensional, where
-:math:`V` is our vocabulary, but often the outputs are only a few
-dimensional (if we are only predicting a handful of labels, for
-instance). How do we get from a massive dimensional space to a smaller
-dimensional space?
-
-How about instead of ascii representations, we use a one-hot encoding?
-That is, we represent the word :math:`w` by
+词嵌入是每一个词汇的实数密集向量.在自然语言处理中，特征往往是单词!
+但是如何在计算机中表示一个单词 ?你可以存储它的ascii字符表示，但是
+它只能告诉你单词 *是* 什么，它没有多说它的 *含义*（你可以从它的词
+缀或者大写字母中得到它的词性，但不多）.更何况，如何将这些表示结合在
+一起？我们常常想从神经网络中得到稠密的输出，当输入是 :math:`|V|` 维
+向量, :math:`V` 是我们的词典大小,但是我们的输出只有一小部分是维度是
+实数。(如果我们只是预测一部分标签，例如).如何从一个庞大的向量空间
+到一个较小的向量空间?如何代替 ascii 表示词汇，我们使用 one-hot 编码?
+也就是说, 我们表示单词 :math:`w` 通过
 
 .. math::  \overbrace{\left[ 0, 0, \dots, 1, \dots, 0, 0 \right]}^\text{|V| elements}
 
-where the 1 is in a location unique to :math:`w`. Any other word will
-have a 1 in some other location, and a 0 everywhere else.
+1 出现在特定的位置 :math:`w`.任何单词在其对应的位置都是 1 ，其他的都是 0 .
 
-There is an enormous drawback to this representation, besides just how
-huge it is. It basically treats all words as independent entities with
-no relation to each other. What we really want is some notion of
-*similarity* between words. Why? Let's see an example.
+除了向量巨大以外 , 还有一个致命的缺陷.这基本上将所有的单词之间当做独立无关的实体对待。
+我们真正想要的是词汇之间的 *similarity* 相似性这一概念。为什么? 请看以下示例.
 
-Suppose we are building a language model. Suppose we have seen the
-sentences
+假设我们正在建立一个语言模型. 假设我们看过这些句子在我们训练数据中.
 
 * The mathematician ran to the store.
 * The physicist ran to the store.
 * The mathematician solved the open problem.
 
-in our training data. Now suppose we get a new sentence never before
-seen in our training data:
+现在假设我们得到了一个我们训练数据中前所未见的新句子:
 
 * The physicist solved the open problem.
 
 Our language model might do OK on this sentence, but wouldn't it be much
 better if we could use the following two facts:
 
+我们的语言模型在这句话上可能会行得通，但是如果我们能够使用以下两个示例则会差得多:
+
 * We have seen  mathematician and physicist in the same role in a sentence. Somehow they
   have a semantic relation.
 * We have seen mathematician in the same role  in this new unseen sentence
   as we are now seeing physicist.
 
-and then infer that physicist is actually a good fit in the new unseen
-sentence? This is what we mean by a notion of similarity: we mean
-*semantic similarity*, not simply having similar orthographic
-representations. It is a technique to combat the sparsity of linguistic
-data, by connecting the dots between what we have seen and what we
-haven't. This example of course relies on a fundamental linguistic
-assumption: that words appearing in similar contexts are related to each
-other semantically. This is called the `distributional
-hypothesis <https://en.wikipedia.org/wiki/Distributional_semantics>`__.
+然后推断物理学家实际上很适合新的未见过的句子吗？这就是我们所说的相似概念 :
+我们的意思是 *semantic similarity* ,而不仅仅是具有相似的字形表示.
+这是一种通过连接我们所看到的和我们所没有的之间的点来对抗语言数据的稀疏性的技术.
+这个例子依赖于一个基本的语言学假设 : 出现在相似语境中的词在语义上彼此相关.
+被称为`distributional hypothesis <https://en.wikipedia.org/wiki/Distributional_semantics>`__.
 
 
-Getting Dense Word Embeddings
+获取密集词嵌入
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-How can we solve this problem? That is, how could we actually encode
-semantic similarity in words? Maybe we think up some semantic
-attributes. For example, we see that both mathematicians and physicists
-can run, so maybe we give these words a high score for the "is able to
-run" semantic attribute. Think of some other attributes, and imagine
-what you might score some common words on those attributes.
-
-If each attribute is a dimension, then we might give each word a vector,
-like this:
+我们如何解决这个问题? 也就是说，我们如何才能真正编码语义相似性呢？ 也许我们想
+出了一些语义属性.例如，我们看到数学家和物理学家都可以运行，所以也许我们会给这些
+词赋予 "is able to run" 语义属性的高分。想想其他一些属性，想象一下你可能在这些
+属性上得到一些常用词。如果每个属性都是一个维度，那么我们可能会给每个单词一个向量，
+如下所示:
 
 .. math::
 
@@ -84,75 +66,53 @@ like this:
     q_\text{physicist} = \left[ \overbrace{2.5}^\text{can run},
    \overbrace{9.1}^\text{likes coffee}, \overbrace{6.4}^\text{majored in Physics}, \dots \right]
 
-Then we can get a measure of similarity between these words by doing:
+然后我们可以通过这样做来获得这些词的相似度:
 
 .. math::  \text{Similarity}(\text{physicist}, \text{mathematician}) = q_\text{physicist} \cdot q_\text{mathematician}
 
-Although it is more common to normalize by the lengths:
+尽管通过长度进行归一化更为常见:
 
 .. math::
 
     \text{Similarity}(\text{physicist}, \text{mathematician}) = \frac{q_\text{physicist} \cdot q_\text{mathematician}}
    {\| q_\text{\physicist} \| \| q_\text{mathematician} \|} = \cos (\phi)
 
-Where :math:`\phi` is the angle between the two vectors. That way,
-extremely similar words (words whose embeddings point in the same
-direction) will have similarity 1. Extremely dissimilar words should
-have similarity -1.
+其中 :math:`\phi` 是两个向量之间的角度. 这样,及其相似的词 (词嵌入指向相同的方向) 
+相似度为 1. 完全相反的词相似度为 -1.
+
+你可以从本节开头考虑稀疏的 one-hot 编码 , 作为我们已经定义的这些新矢量的一个特例,
+其中每个单词基本上具有相似性0 , 并且我们给每个单词一些独特的语义属性. 
+这些新的向量是* dense *，这就是说它们的入口（通常）是非零的。
 
 
-You can think of the sparse one-hot vectors from the beginning of this
-section as a special case of these new vectors we have defined, where
-each word basically has similarity 0, and we gave each word some unique
-semantic attribute. These new vectors are *dense*, which is to say their
-entries are (typically) non-zero.
+但是这些新的向量是一个巨大的痛苦 : 你可以想象成千上万个可能与确定相似性有关
+的不同语义属性 , 以及如何设置不同属性的值?深度学习理念的核心是神经网络学习特
+征的表征，而不是要求程序员亲自设计它们.那么为什么不让这个词嵌入在我们的模型
+中作为参数，然后在训练中更新?这正是我们要做的.我们将拥有一些原则上网络可以学
+习的 *latent semantic attributes*.
 
-But these new vectors are a big pain: you could think of thousands of
-different semantic attributes that might be relevant to determining
-similarity, and how on earth would you set the values of the different
-attributes? Central to the idea of deep learning is that the neural
-network learns representations of the features, rather than requiring
-the programmer to design them herself. So why not just let the word
-embeddings be parameters in our model, and then be updated during
-training? This is exactly what we will do. We will have some *latent
-semantic attributes* that the network can, in principle, learn. Note
-that the word embeddings will probably not be interpretable. That is,
-although with our hand-crafted vectors above we can see that
-mathematicians and physicists are similar in that they both like coffee,
-if we allow a neural network to learn the embeddings and see that both
-mathematicians and physicisits have a large value in the second
-dimension, it is not clear what that means. They are similar in some
-latent semantic dimension, but this probably has no interpretation to
-us.
+注意，词嵌入无法解释.也就是说,虽然用上面的手工制作的向量,我们可以看到数学家和
+物理学家的相似之处在于,他们都喜欢咖啡,如果我们允许神经网络学习嵌入,并且看到数
+学家和物理学家都有很大的价值在第二个方面，目前尚不清楚这意味着什么 . 它们在一
+些潜在的语义维度上是相似的，但是这可能对我们没有任何解释.
+
+总之，**单词嵌入是一个单词的 * 语义 * 的表示，有效地编码可能与手头任务** 相关的语义
+信息.也可以嵌入其他的东西 : 词性标签,解析树,任何东西! 特征嵌入的想法是该领域的核心.
 
 
-In summary, **word embeddings are a representation of the *semantics* of
-a word, efficiently encoding semantic information that might be relevant
-to the task at hand**. You can embed other things too: part of speech
-tags, parse trees, anything! The idea of feature embeddings is central
-to the field.
-
-
-Word Embeddings in Pytorch
+Pytorch中的词嵌入
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before we get to a worked example and an exercise, a few quick notes
-about how to use embeddings in Pytorch and in deep learning programming
-in general. Similar to how we defined a unique index for each word when
-making one-hot vectors, we also need to define an index for each word
-when using embeddings. These will be keys into a lookup table. That is,
-embeddings are stored as a :math:`|V| \times D` matrix, where :math:`D`
-is the dimensionality of the embeddings, such that the word assigned
-index :math:`i` has its embedding stored in the :math:`i`'th row of the
-matrix. In all of my code, the mapping from words to indices is a
-dictionary named word\_to\_ix.
+在我们开始一个工作的例子和练习之前，先简单介绍一下如何在Pytorch中使用嵌
+入以及一般的深度学习编程。类似于我们在制作一个one-hot编码时为每个单词定
+义唯一索引的方式，我们还需要在使用嵌入时为每个单词定义一个索引.
+这些将成为查找表的关键.也就是说，词嵌入存储为 :math:`|V| \times D` 矩阵，
+其中 :math:`D` 是嵌入的维数,使得赋予索引 :math:`i` 的单词将其嵌入存储在
+矩阵的第 :math:`i` 行中.
 
-The module that allows you to use embeddings is torch.nn.Embedding,
-which takes two arguments: the vocabulary size, and the dimensionality
-of the embeddings.
-
-To index into this table, you must use torch.LongTensor (since the
-indices are integers, not floats).
+在我所有的代码中, 从单词到索引的映射是一个名为 word\_to\_ix 的字典.
+允许使用嵌入的模块是torch.nn.Embedding，它有两个参数：词汇大小和嵌入的维数.
+要索引到此表中，您必须使用torch.LongTensor（因为索引是整数，而不是浮点数）.
 
 """
 
